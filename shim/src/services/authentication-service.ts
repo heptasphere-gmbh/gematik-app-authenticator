@@ -2,6 +2,7 @@ import * as forge from 'node-forge';
 // @ts-ignore - node-jose doesn't have types
 import * as jose from 'node-jose';
 import * as crypto from 'crypto';
+import axios, { AxiosResponse } from 'axios';
 import { CertificateService, CertificateInfo } from './certificate-service';
 import { logger } from './logger';
 
@@ -52,20 +53,18 @@ export class AuthenticationService {
     try {
       logger.info('Requesting challenge from IDP', { idpUrl: config.idpUrl });
       
-      const got = (await import('got')).default;
       const challengeUrl = `${config.idpUrl}/challenge`;
       
-      const response = await got.get(challengeUrl, {
-        searchParams: {
+      const response = await axios.get<ChallengeResponse>(challengeUrl, {
+        params: {
           client_id: config.clientId,
           redirect_uri: config.redirectUri,
           scope: config.scope || 'openid',
           response_type: 'code'
-        },
-        responseType: 'json'
+        }
       });
       
-      const challenge = response.body as ChallengeResponse;
+      const challenge = response.data;
       logger.info('Received challenge from IDP');
       
       return challenge;
@@ -89,9 +88,14 @@ export class AuthenticationService {
       // Get certificate as base64 for x5c header
       const certBase64 = CertificateService.getCertificateAsBase64(this.certificate.certificate);
       
+      // Determine algorithm based on key type
+      // BP256R1 for ECC, RS256 for RSA
+      // For now, using BP256R1 as the default for German health infrastructure
+      const algorithm = 'BP256R1';
+      
       // Create JWS header
       const header = {
-        alg: 'BP256R1', // or 'RS256' depending on certificate type
+        alg: algorithm,
         typ: 'JWT',
         x5c: [certBase64]
       };
@@ -113,15 +117,20 @@ export class AuthenticationService {
       const md = forge.md.sha256.create();
       md.update(signingInput, 'utf8');
       
-      // Type assertion for forge PrivateKey
-      const signature = (privateKey as any).sign(md);
-      const encodedSignature = this.base64UrlEncode(forge.util.encode64(signature));
+      // node-forge PrivateKey has a sign method, but TypeScript types may not reflect it
+      // Using a type guard to safely access the sign method
+      if ('sign' in privateKey && typeof privateKey.sign === 'function') {
+        const signature = privateKey.sign(md);
+        const encodedSignature = this.base64UrlEncode(forge.util.encode64(signature));
       
-      // Combine to create JWS
-      const jws = `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
-      
-      logger.info('Successfully created signed challenge');
-      return jws;
+        // Combine to create JWS
+        const jws = `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+        
+        logger.info('Successfully created signed challenge');
+        return jws;
+      } else {
+        throw new Error('Private key does not support signing operation');
+      }
     } catch (error) {
       logger.error('Failed to create signed challenge:', error);
       throw new Error(`Failed to sign challenge: ${error instanceof Error ? error.message : String(error)}`);
@@ -167,19 +176,20 @@ export class AuthenticationService {
     try {
       logger.info('Sending authorization request to IDP');
       
-      const got = (await import('got')).default;
       const authUrl = `${config.idpUrl}/auth`;
       
-      const response = await got.post(authUrl, {
-        form: {
-          signed_challenge: signedChallenge,
-          client_id: config.clientId,
-          redirect_uri: config.redirectUri,
-          response_type: 'code',
-          state: state || '',
-          scope: config.scope || 'openid'
-        },
-        followRedirect: false
+      const params = new URLSearchParams({
+        signed_challenge: signedChallenge,
+        client_id: config.clientId,
+        redirect_uri: config.redirectUri,
+        response_type: 'code',
+        state: state || '',
+        scope: config.scope || 'openid'
+      });
+      
+      const response = await axios.post(authUrl, params, {
+        maxRedirects: 0,
+        validateStatus: (status) => status === 302 || status === 303
       });
       
       // Extract authorization code from redirect
@@ -210,20 +220,22 @@ export class AuthenticationService {
     try {
       logger.info('Exchanging authorization code for tokens');
       
-      const got = (await import('got')).default;
       const tokenUrl = `${config.idpUrl}/token`;
       
-      const response = await got.post(tokenUrl, {
-        form: {
-          grant_type: 'authorization_code',
-          code: code,
-          client_id: config.clientId,
-          redirect_uri: config.redirectUri
-        },
-        responseType: 'json'
+      const params = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        client_id: config.clientId,
+        redirect_uri: config.redirectUri
       });
       
-      const tokens = response.body as TokenResponse;
+      const response = await axios.post<TokenResponse>(tokenUrl, params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+      
+      const tokens = response.data;
       logger.info('Successfully received tokens');
       
       return tokens;

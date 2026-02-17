@@ -1,13 +1,20 @@
 import { Router, Request, Response } from 'express';
-import { CertificateService } from '../services/certificate-service';
+import { CertificateService, CertificateInfo } from '../services/certificate-service';
 import { logger } from '../services/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const router = Router();
 
+// Define interface for stored certificates
+interface StoredCertificate {
+  id: string;
+  info: CertificateInfo;
+  uploadedAt: Date;
+}
+
 // In-memory store for certificates (in production, use a database)
-const certificateStore = new Map<string, any>();
+const certificateStore = new Map<string, StoredCertificate>();
 
 /**
  * Upload and parse P12 certificate

@@ -35,6 +35,9 @@ RUN npm ci --only=production && \
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy healthcheck script
+COPY scripts/ ./scripts/
+
 # Create directories for logs and uploads
 RUN mkdir -p /app/logs /app/uploads && \
     chown -R shimuser:shimuser /app
@@ -47,7 +50,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node /app/scripts/healthcheck.js
 
 # Start application
 CMD ["node", "dist/index.js"]
