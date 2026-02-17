@@ -442,9 +442,33 @@ DEFAULT_REDIRECT_URI=http://localhost:3000/callback
 - ✅ Rotate certificates regularly
 - ✅ Use strong passwords for P12 files
 - ✅ Monitor logs for suspicious activity
-- ✅ Implement rate limiting in production
+- ✅ **Implement rate limiting in production** (e.g., using express-rate-limit middleware)
 - ✅ Use secure network communication
 - ✅ Keep the service behind a reverse proxy (nginx/traefik)
+- ✅ Consider implementing authentication/API keys for the shim endpoints
+
+### Rate Limiting (Production Recommendation)
+
+For production deployments, implement rate limiting to prevent abuse:
+
+```javascript
+// Install: npm install express-rate-limit
+import rateLimit from 'express-rate-limit';
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply to all routes
+app.use(limiter);
+
+// Or apply to specific routes
+app.use('/api/auth', limiter);
+app.use('/api/certificates', limiter);
+```
 
 ## Examples
 
