@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  gematik-shim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gematik-authenticator-shim
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      - LOG_DIR=/app/logs
+      - CERT_STORAGE_DIR=/app/uploads
+      - ALLOWED_ORIGINS=*
+      - MAX_UPLOAD_SIZE=5mb
+      # IDP Configuration (optional defaults)
+      - DEFAULT_IDP_URL=${DEFAULT_IDP_URL:-}
+      - DEFAULT_CLIENT_ID=${DEFAULT_CLIENT_ID:-}
+      - DEFAULT_REDIRECT_URI=${DEFAULT_REDIRECT_URI:-http://localhost:3000/callback}
+    volumes:
+      # Persist logs
+      - ./logs:/app/logs
+      # Persist uploaded certificates (optional, for development)
+      # In production, certificates should not be persisted
+      # - ./uploads:/app/uploads
+    networks:
+      - gematik-network
+    healthcheck:
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+      test: ["CMD", "node", "/app/scripts/healthcheck.js"]
+
+networks:
+  gematik-network:
+    driver: bridge
