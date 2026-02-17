@@ -1,4 +1,5 @@
 import * as forge from 'node-forge';
+// @ts-ignore - node-jose doesn't have types
 import * as jose from 'node-jose';
 import * as crypto from 'crypto';
 import { CertificateService, CertificateInfo } from './certificate-service';
@@ -70,7 +71,7 @@ export class AuthenticationService {
       return challenge;
     } catch (error) {
       logger.error('Failed to get challenge from IDP:', error);
-      throw new Error(`Failed to get challenge: ${error.message}`);
+      throw new Error(`Failed to get challenge: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -112,7 +113,8 @@ export class AuthenticationService {
       const md = forge.md.sha256.create();
       md.update(signingInput, 'utf8');
       
-      const signature = privateKey.sign(md);
+      // Type assertion for forge PrivateKey
+      const signature = (privateKey as any).sign(md);
       const encodedSignature = this.base64UrlEncode(forge.util.encode64(signature));
       
       // Combine to create JWS
@@ -122,7 +124,7 @@ export class AuthenticationService {
       return jws;
     } catch (error) {
       logger.error('Failed to create signed challenge:', error);
-      throw new Error(`Failed to sign challenge: ${error.message}`);
+      throw new Error(`Failed to sign challenge: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -154,7 +156,7 @@ export class AuthenticationService {
       return jwe as string;
     } catch (error) {
       logger.error('Failed to create encrypted challenge:', error);
-      throw new Error(`Failed to encrypt challenge: ${error.message}`);
+      throw new Error(`Failed to encrypt challenge: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -197,7 +199,7 @@ export class AuthenticationService {
       return code;
     } catch (error) {
       logger.error('Failed to authorize:', error);
-      throw new Error(`Authorization failed: ${error.message}`);
+      throw new Error(`Authorization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -227,7 +229,7 @@ export class AuthenticationService {
       return tokens;
     } catch (error) {
       logger.error('Failed to exchange code for tokens:', error);
-      throw new Error(`Token exchange failed: ${error.message}`);
+      throw new Error(`Token exchange failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   

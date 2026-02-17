@@ -59,7 +59,7 @@ router.post('/authenticate', async (req: Request, res: Response) => {
     logger.error('Authentication failed:', error);
     res.status(500).json({ 
       error: 'Authentication failed',
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -93,7 +93,7 @@ router.post('/challenge', async (req: Request, res: Response) => {
     logger.error('Failed to get challenge:', error);
     res.status(500).json({ 
       error: 'Failed to get challenge',
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -127,7 +127,7 @@ router.post('/sign', async (req: Request, res: Response) => {
     logger.error('Failed to sign challenge:', error);
     res.status(500).json({ 
       error: 'Failed to sign challenge',
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });

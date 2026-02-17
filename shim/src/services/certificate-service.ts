@@ -72,7 +72,7 @@ export class CertificateService {
       };
     } catch (error) {
       logger.error('Failed to parse P12 certificate:', error);
-      throw new Error(`Failed to parse P12 certificate: ${error.message}`);
+      throw new Error(`Failed to parse P12 certificate: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -91,8 +91,8 @@ export class CertificateService {
     return {
       certificate: certPem,
       privateKey: '', // Will be filled in matchKeysWithCertificates
-      subject: cert.subject.attributes.map(attr => `${attr.shortName}=${attr.value}`).join(', '),
-      issuer: cert.issuer.attributes.map(attr => `${attr.shortName}=${attr.value}`).join(', '),
+      subject: cert.subject.attributes.map((attr: any) => `${attr.shortName}=${attr.value}`).join(', '),
+      issuer: cert.issuer.attributes.map((attr: any) => `${attr.shortName}=${attr.value}`).join(', '),
       serialNumber: cert.serialNumber,
       validFrom: cert.validity.notBefore,
       validTo: cert.validity.notAfter,

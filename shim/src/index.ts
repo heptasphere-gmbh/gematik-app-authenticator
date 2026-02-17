@@ -13,7 +13,7 @@ import authRouter from './routes/auth';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Create upload directory
@@ -127,7 +127,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Start server
-const server = app.listen(PORT, HOST as string, () => {
+const server = app.listen(PORT, HOST, () => {
   logger.info(`Gematik Authenticator Shim started on ${HOST}:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`Upload directory: ${uploadDir}`);

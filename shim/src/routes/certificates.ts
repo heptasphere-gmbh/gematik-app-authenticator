@@ -73,7 +73,7 @@ router.post('/upload', async (req: Request, res: Response) => {
       fs.unlinkSync(req.file.path);
     }
     
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 
